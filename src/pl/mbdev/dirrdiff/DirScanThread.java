@@ -42,7 +42,15 @@ public final class DirScanThread extends MonitoredThread {
 	
 	private final JProgressBar diffProgress;
 	
-	private int filesCount = 0;
+	/**
+	 * Number of scanned files.
+	 */
+	private int fileCount = 0;
+	
+	/**
+	 * Number of scanned folders.
+	 */
+	private int dirCount = 0;
 	
 	private ArrayList<File> files;
 	
@@ -85,7 +93,8 @@ public final class DirScanThread extends MonitoredThread {
 			
 			if (diffProgress != null) {
 				diffProgress.setValue(diffProgress.getMaximum());
-				diffProgress.setString("Finished. Scanned " + filesCount + " files.");
+				diffProgress.setString("Finished. Scanned " + dirCount + " directories and "
+						+ fileCount + " files.");
 			}
 		} catch (Exception ex) {
 			System.err.println("Exception in thread '" + path + "': " + ex);
@@ -104,6 +113,10 @@ public final class DirScanThread extends MonitoredThread {
 		if (!dir.canRead())
 			return;
 		files.add(dir);
+		dirCount++;
+		if (dirCount % 100 == 0)
+			diffProgress.setString("Scanned " + dirCount + " directories and " + fileCount
+					+ " files...");
 		String[] subPaths = dir.list();
 		if (subPaths == null)
 			return;
@@ -112,14 +125,14 @@ public final class DirScanThread extends MonitoredThread {
 			File file = new File(path);
 			if (file.isDirectory()) {
 				// System.out.println(file.length());
-				
 				scanDirTree(path, true);
 				continue;
 			}
 			files.add(file);
-			filesCount++;
-			if (filesCount % 100 == 0)
-				diffProgress.setString("Scanned " + filesCount + " files...");
+			fileCount++;
+			if (fileCount % 100 == 0)
+				diffProgress.setString("Scanned " + dirCount + " directories and "
+						+ fileCount + " files...");
 		}
 		// if (diffProgress != null) {
 		// int size = (int) dir.length();

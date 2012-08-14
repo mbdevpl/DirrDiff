@@ -68,10 +68,11 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 	// params
 	private GridBagPanel panelParams = new GridBagPanel(
 			Borders.Titled("Dir diff parameters"));
-	private JProgressBar diffProgress1 = new JProgressBar(SwingConstants.HORIZONTAL, 0,
-			100);
-	private JProgressBar diffProgress2 = new JProgressBar(SwingConstants.HORIZONTAL, 0,
-			100);
+	private JProgressBar barScan1 = new JProgressBar(SwingConstants.HORIZONTAL, 0, 100);
+	private JProgressBar barScan2 = new JProgressBar(SwingConstants.HORIZONTAL, 0, 100);
+	private JProgressBar barDiffStageNo = new JProgressBar(SwingConstants.HORIZONTAL, 0, 7);
+	private JProgressBar barDiffStageProgress = new JProgressBar(
+			SwingConstants.HORIZONTAL, 0, 1);
 	
 	/**
 	 * Panel depicting differences in file existence between two scanned directories.
@@ -249,20 +250,103 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 		gb.weightx = 1;
 		gb.anchor = GridBagConstraints.WEST;
 		// gb.ipadx = 5;
-		diffProgress1.setString("Ready.");
-		diffProgress1.setStringPainted(true);
-		panelParams.add(diffProgress1);
+		barScan1.setString("Ready.");
+		barScan1.setStringPainted(true);
+		panelParams.add(barScan1);
 		
-		// gb.gridwidth = GridBagConstraints.REMAINDER;
-		gb.gridwidth = 2;
+		gb.gridwidth = GridBagConstraints.REMAINDER;
+		// gb.gridwidth = 2;
 		gb.anchor = GridBagConstraints.EAST;
-		diffProgress2.setString("Ready.");
-		diffProgress2.setStringPainted(true);
-		panelParams.add(diffProgress2);
+		barScan2.setString("Ready.");
+		barScan2.setStringPainted(true);
+		panelParams.add(barScan2);
 		
-		// panelParams.add(new JLabel("9019031821"));
-		// panelParams.add(new JLabel("12905732"));
+		gb.gridwidth = GridBagConstraints.REMAINDER;
+		gb.anchor = GridBagConstraints.WEST;
+		barDiffStageProgress.setStringPainted(false);
+		panelParams.add(barDiffStageProgress);
+		
+		gb.gridwidth = 4;
+		barDiffStageNo.setStringPainted(true);
+		panelParams.add(barDiffStageNo);
+		
+		initializeStage(0, 1);
 	}
+	
+	// private void initializeStageNo() {
+	// barDiffStageProgress.setValue(0);
+	// barDiffStageProgress.setMaximum(1);
+	// barDiffStageNo.setValue(0);
+	// barDiffStageNo.setString("0 / 7 - idle");
+	// barDiffStageNo.setStringPainted(true);
+	//
+	// }
+	
+	private void initializeStage(int stageNo, int maxValue) {
+		barDiffStageProgress.setValue(0);
+		barDiffStageProgress.setMaximum(maxValue);
+		if (stageNo <= 0)
+			barDiffStageNo.setValue(0);
+		barDiffStageNo.setValue(stageNo - 1);
+		String desc = "";
+		switch (stageNo) {
+		case 0:
+			desc = "Idle.";
+			break;
+		case 1:
+			desc = "Scanning directories...";
+			break;
+		case 2:
+			desc = "Diff existing files...";
+			break;
+		case 3:
+			desc = "Diff files' modification date and size...";
+			break;
+		case 4:
+			desc = "Diff files' modification date and contents...";
+			break;
+		case 5:
+			desc = "Diff files' size...";
+			break;
+		case 6:
+			desc = "Diff files' contents...";
+			break;
+		case 7:
+			desc = "Diff files' modification date...";
+			break;
+		default:
+			desc = "Unknown stage!";
+		}
+		barDiffStageNo.setString(stageNo + " / 7 - " + desc);
+	}
+	
+	private void initializeNextStage(int maxValue) {
+		initializeStage(barDiffStageNo.getValue() + 1, maxValue);
+	}
+	
+	private void setStageProgress(int value) {
+		barDiffStageProgress.setValue(value);
+	}
+	
+	private void finalizeStage() {
+		int max = barDiffStageProgress.getMaximum();
+		barDiffStageProgress.setValue(max);
+		barDiffStageNo.setValue(barDiffStageNo.getValue() + 1);
+	}
+	
+	// private void setStageNo(int number) {
+	// barDiffStageProgress.setValue(0);
+	// barDiffStageNo.setValue(barDiffStageNo.getValue() + 1);
+	// }
+	
+	// private void setNextStageNo() {
+	//
+	// }
+	
+	// private void setStageNoFinished() {
+	// barDiffStageProgress.setValue(0);
+	// barDiffStageNo.setValue(barDiffStageNo.getValue() + 1);
+	// }
 	
 	@Override
 	public void threadedActionPerformed(ActionEvent e) {
@@ -321,11 +405,12 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 		
 		bDiff.setEnabled(false);
 		dataFetched = false;
+		initializeNextStage(2);
 		try {
-			t1 = new DirScanThread(d1, diffProgress1);
+			t1 = new DirScanThread(d1, barScan1);
 			t1.addMonitor(this);
 			t1.start();
-			t2 = new DirScanThread(d2, diffProgress2);
+			t2 = new DirScanThread(d2, barScan2);
 			t2.addMonitor(this);
 			t2.start();
 		} catch (Exception ex) {
@@ -383,6 +468,9 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 		return copy;
 	}
 	
+	/**
+	 * Looks for existing files.
+	 */
 	private void refreshPanelFilesExist() {
 		ArrayList<File> filesOne = copyFileArray(filesOneAll);
 		ArrayList<File> filesTwo = copyFileArray(filesTwoAll);
@@ -392,7 +480,12 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 		// comparing string arrays, and moving found files from One&Two to Both
 		ArrayList<File> filesBoth = new ArrayList<File>();
 		ArrayList<String> pathsBoth = new ArrayList<String>();
+		initializeNextStage(pathsOne.size());
+		int scanned = 0;
 		for (int i = pathsOne.size() - 1; i >= 0; i--) {
+			if (scanned % 100 == 0)
+				setStageProgress(scanned);
+			scanned++;
 			String s = pathsOne.get(i);
 			int index = pathsTwo.indexOf(s);
 			if (index == -1)
@@ -405,6 +498,7 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 			filesTwo.remove(index);
 			pathsTwo.remove(index);
 		}
+		finalizeStage();
 		
 		// filling existence panels
 		panelFilesExist.setFilesOne(filesOne, pathsOne);
@@ -412,6 +506,9 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 		panelFilesExist.setFilesBoth(filesBoth, pathsBoth);
 	}
 	
+	/**
+	 * Looks for files that were modified later.
+	 */
 	private void refreshPanelFilesModifiedSize() {
 		ArrayList<File> files1 = new ArrayList<File>();
 		ArrayList<String> paths1 = new ArrayList<String>();
@@ -421,7 +518,12 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 		ArrayList<String> paths12 = copyStringArray(panelFilesExist.getPathsBoth());
 		
 		int size = paths12.size();
+		initializeNextStage(size);
+		int scanned = 0;
 		for (int i = size - 1; i >= 0; i--) {
+			if (scanned % 50 == 0)
+				setStageProgress(scanned);
+			scanned++;
 			String path = paths12.get(i);
 			if (path.endsWith(File.separator))
 				continue;
@@ -446,12 +548,16 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 			files12.remove(i);
 			paths12.remove(i);
 		}
+		finalizeStage();
 		
 		panelFilesModifiedSize.setFilesOne(files1, paths1);
 		panelFilesModifiedSize.setFilesBoth(files12, paths12);
 		panelFilesModifiedSize.setFilesTwo(files2, paths2);
 	}
 	
+	/**
+	 * Looks for files that were modified later and are different.
+	 */
 	private void refreshPanelFilesModifiedHash() {
 		ArrayList<File> files1 = new ArrayList<File>();
 		ArrayList<String> paths1 = new ArrayList<String>();
@@ -461,7 +567,12 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 		ArrayList<String> paths12 = copyStringArray(panelFilesModifiedSize.getPathsBoth());
 		
 		int size = paths12.size();
+		initializeNextStage(size);
+		int scanned = 0;
 		for (int i = size - 1; i >= 0; i--) {
+			if (scanned % 50 == 0)
+				setStageProgress(scanned);
+			scanned++;
 			String path = paths12.get(i);
 			if (path.endsWith(File.separator))
 				continue;
@@ -483,12 +594,16 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 			files12.remove(i);
 			paths12.remove(i);
 		}
+		finalizeStage();
 		
 		panelFilesModifiedHash.setFilesOne(files1, paths1);
 		panelFilesModifiedHash.setFilesBoth(files12, paths12);
 		panelFilesModifiedHash.setFilesTwo(files2, paths2);
 	}
 	
+	/**
+	 * Looks for files that differ in size.
+	 */
 	private void refreshPanelFilesSize() {
 		ArrayList<File> files1Size = new ArrayList<File>();
 		ArrayList<String> paths1Size = new ArrayList<String>();
@@ -499,7 +614,12 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 				.getPathsBoth());
 		
 		int size = paths12Size.size();
+		initializeNextStage(size);
+		int scanned = 0;
 		for (int i = size - 1; i >= 0; i--) {
+			if (scanned % 50 == 0)
+				setStageProgress(scanned);
+			scanned++;
 			String path = paths12Size.get(i);
 			if (path.endsWith(File.separator))
 				continue;
@@ -520,6 +640,8 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 			files12Size.remove(i);
 			paths12Size.remove(i);
 		}
+		finalizeStage();
+		
 		panelFilesSize.setFilesOne(files1Size, paths1Size);
 		panelFilesSize.setFilesBoth(files12Size, paths12Size);
 		panelFilesSize.setFilesTwo(files2Size, paths2Size);
@@ -534,7 +656,12 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 		ArrayList<String> paths12 = copyStringArray(panelFilesSize.getPathsBoth());
 		
 		int size = paths12.size();
+		initializeNextStage(size);
+		int scanned = 0;
 		for (int i = size - 1; i >= 0; i--) {
+			if (scanned % 50 == 0)
+				setStageProgress(scanned);
+			scanned++;
 			String path = paths12.get(i);
 			if (path.endsWith(File.separator))
 				continue;
@@ -555,6 +682,7 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 			files12.remove(i);
 			paths12.remove(i);
 		}
+		finalizeStage();
 		
 		panelFilesHash.setFilesOne(files1, paths1);
 		panelFilesHash.setFilesBoth(files12, paths12);
@@ -570,7 +698,12 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 		ArrayList<String> paths12 = copyStringArray(panelFilesHash.getPathsBoth());
 		
 		int size = paths12.size();
+		initializeNextStage(size);
+		int scanned = 0;
 		for (int i = size - 1; i >= 0; i--) {
+			if (scanned % 50 == 0)
+				setStageProgress(scanned);
+			scanned++;
 			String path = paths12.get(i);
 			if (path.endsWith(File.separator))
 				continue;
@@ -590,6 +723,7 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 			files12.remove(i);
 			paths12.remove(i);
 		}
+		finalizeStage();
 		
 		panelFilesModified.setFilesOne(files1, paths1);
 		panelFilesModified.setFilesBoth(files12, paths12);
@@ -601,6 +735,7 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 		synchronized (semaphore) {
 			if (!newState.equals(MonitoredThread.STOPPED))
 				return;
+			setStageProgress(1);
 			if (!t1.isStopped() || !t2.isStopped())
 				return;
 			if (dataFetched)
@@ -608,12 +743,14 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 			fetchData();
 			dataFetched = true;
 		}
+		finalizeStage();
 		refreshPanelFilesExist();
 		refreshPanelFilesModifiedSize();
 		refreshPanelFilesModifiedHash();
 		refreshPanelFilesSize();
 		refreshPanelFilesHash();
 		refreshPanelFilesModified();
+		barDiffStageNo.setString("Diff finished.");
 		bDiff.setEnabled(true);
 	}
 	
