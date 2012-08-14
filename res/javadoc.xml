@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="javadoc">
+    <target name="javadoc">
+        <javadoc access="private" author="true" classpath="D:\Projects\Java\StandardTools\bin" destdir="../doc" doctitle="DirrDiff" nodeprecated="false" nodeprecatedlist="false" noindex="false" nonavbar="false" notree="false" overview="D:\Projects\JavaSE\DirrDiff\res\overview.html" packagenames="pl.mbdev.dirrdiff" source="1.7" sourcefiles="../src/DirrDiff.java" sourcepath="../src" splitindex="true" use="true" version="true"/>
+    </target>
+</project>

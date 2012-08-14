@@ -1,6 +1,3 @@
-/**
- * 
- */
 package pl.mbdev.dirrdiff;
 
 import java.awt.Dimension;
@@ -18,14 +15,32 @@ import pl.mbdev.util.File;
 import pl.mbdev.gui.GridBagPanel;
 
 /**
- * <code></code><br />
+ * Panel that displays three provided sets of files and the sizes of those sets. Uses
+ * three <code>JScrollPane</code>s, each containing a <code>JList</code>.<br />
  * <br />
  * File creation date: Jul 28, 2012, 6:19:02 PM. This is a part of DirrDiff.
+ * 
+ * <pre>
+ * Copyright 2012 Mateusz Bysiek,
+ *     mb@mbdev.pl, http://mbdev.pl/
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * </pre>
  * 
  * @author &copy; 2012 Mateusz Bysiek <a href="http://mbdev.pl/">http://mbdev.pl/</a>
  * 
  */
-public class FileDiffPanel extends GridBagPanel {
+public final class FileDiffPanel extends GridBagPanel {
 	
 	/**
 	 * ID.
@@ -76,9 +91,13 @@ public class FileDiffPanel extends GridBagPanel {
 		
 		create();
 		
-		scrollerOne.setPreferredSize(new Dimension(200, 200));
-		scrollerBoth.setPreferredSize(new Dimension(100, 200));
-		scrollerTwo.setPreferredSize(new Dimension(200, 200));
+		scrollerOne.setPreferredSize(new Dimension(200, 300));
+		scrollerBoth.setPreferredSize(new Dimension(200, 300));
+		scrollerTwo.setPreferredSize(new Dimension(200, 300));
+		
+		b1.setEnabled(false);
+		b12.setEnabled(false);
+		b2.setEnabled(false);
 		
 		// setColumnLabels("Only in dir one", "Common part", "Only in dir two");
 		// setButtonLabels("Copy to two", "Sync", "Copy to one");
@@ -92,19 +111,17 @@ public class FileDiffPanel extends GridBagPanel {
 		gb.fill = GridBagConstraints.NONE;
 		gb.anchor = GridBagConstraints.CENTER;
 		gb.gridwidth = 1;
+		gb.weightx = 1;
 		gb.weighty = 0;
 		add(l1);
 		
-		gb.anchor = GridBagConstraints.CENTER;
 		add(l12);
 		
-		gb.anchor = GridBagConstraints.CENTER;
 		gb.gridwidth = GridBagConstraints.REMAINDER;
 		add(l2);
 		
 		// lists
 		gb.fill = GridBagConstraints.BOTH;
-		gb.anchor = GridBagConstraints.CENTER;
 		gb.gridwidth = 1;
 		gb.weighty = 1;
 		add(scrollerOne);
@@ -118,16 +135,13 @@ public class FileDiffPanel extends GridBagPanel {
 		gb.fill = GridBagConstraints.NONE;
 		gb.anchor = GridBagConstraints.WEST;
 		gb.gridwidth = 1;
-		gb.weightx = 2;
 		gb.weighty = 0;
 		add(b1);
 		
 		gb.anchor = GridBagConstraints.CENTER;
-		gb.weightx = 1;
 		add(b12);
 		
 		gb.anchor = GridBagConstraints.EAST;
-		gb.weightx = 2;
 		add(b2);
 	}
 	

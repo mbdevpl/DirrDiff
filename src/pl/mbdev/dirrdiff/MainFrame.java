@@ -1,6 +1,3 @@
-/**
- * 
- */
 package pl.mbdev.dirrdiff;
 
 import java.awt.Dimension;
@@ -27,14 +24,30 @@ import pl.mbdev.util.MonitoredThread;
 import pl.mbdev.util.ThreadMonitor;
 
 /**
- * <code></code><br />
+ * Main window of DirrDiff.<br />
  * <br />
  * File creation date: Jul 28, 2012, 5:23:18 PM. This is a part of DirrDiff.
  * 
- * @author &copy; 2012 Mateusz Bysiek <a href="http://mbdev.pl/">http://mbdev.pl/</a>
+ * <pre>
+ * Copyright 2012 Mateusz Bysiek,
+ *     mb@mbdev.pl, http://mbdev.pl/
  * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * </pre>
+ * 
+ * @author &copy; 2012 Mateusz Bysiek <a href="http://mbdev.pl/">http://mbdev.pl/</a>
  */
-public class MainFrame extends GridBagFrame implements ThreadMonitor {
+public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 	
 	/**
 	 * ID.
@@ -49,6 +62,7 @@ public class MainFrame extends GridBagFrame implements ThreadMonitor {
 	// main menu options
 	private JMenu menuApplication = new JMenu("Application");
 	private JMenuItem optionAbout = new JMenuItem("About");
+	private JMenuItem optionWebPage = new JMenuItem("Author's web page");
 	private JMenuItem optionExit = new JMenuItem("Exit");
 	
 	// params
@@ -113,12 +127,10 @@ public class MainFrame extends GridBagFrame implements ThreadMonitor {
 	private ArrayList<String> pathsTwoAll;
 	
 	/**
-	 * @param title
-	 * @param location
-	 * @param minimumSize
+	 * Constructs the main frame of DirrDiff.
 	 */
 	public MainFrame() {
-		super("Dirr Diff", new Point(20, 20), new Dimension(700, 700));
+		super("Dirr Diff", new Point(100, 100), new Dimension(800, 600));
 		
 		createMenu();
 		create();
@@ -129,17 +141,10 @@ public class MainFrame extends GridBagFrame implements ThreadMonitor {
 	
 	private void createMenu() {
 		menuApplication.add(optionAbout);
-		// optionAbout.addActionListener(this);
 		menuApplication.add(optionExit);
-		// optionExit.addActionListener(this);
+		if (isBrowsingSupported())
+			menuApplication.add(optionWebPage);
 		menuBar.add(menuApplication);
-		
-		// menuProfiles.add(optionNewProfile);
-		// menuProfiles.addSeparator();
-		// optionNewProfile.addActionListener(this);
-		// for (JMenuItem optionProfile : optionProfiles)
-		// menuProfiles.add(optionProfile);
-		// menuBar.add(menuProfiles);
 		
 		setJMenuBar(menuBar);
 	}
@@ -168,8 +173,8 @@ public class MainFrame extends GridBagFrame implements ThreadMonitor {
 		
 		panelFilesSize.setColumnLabels("Larger in dir one", "Same size",
 				"Larger in dir two");
-		panelFilesSize.setButtonLabels("Overwrite smaller in two",
-				"Overwrite all smaller with larger", "Overwrite smaller in one");
+		panelFilesSize.setButtonLabels("Overwrite smaller in two", "Overwrite all smaller",
+				"Overwrite smaller in one");
 		
 		panelFilesHash.setColumnLabels("Different contents", "Identical contents",
 				"Different contents");
@@ -265,6 +270,33 @@ public class MainFrame extends GridBagFrame implements ThreadMonitor {
 		System.out.println(src.getClass().getSimpleName() + " " + e.getActionCommand());
 		if (src.equals(bDiff)) {
 			launchDiff();
+		} else if (src.equals(optionAbout)) {
+			StringBuffer msg = new StringBuffer("<html><body width=300>");
+			msg.append("<h2>DirrDiff - DIRectory Recursive DIFFerentiation tool</h2>");
+			msg.append("<p>by Mateusz Bysiek<br>http://mbdev.pl/</p>");
+			msg.append("<h3>About application</h3>");
+			msg.append("<p>Designed for comperhensive comparison of two selected")
+					.append(" directories.")
+					.append(" Files are compared by: existence, modification date, size and")
+					.append(" contents. Two directories are scanned asynchroneously,")
+					.append(" which can save time when directories are on two different ")
+					.append("physical discs.</p>");
+			msg.append("<br>");
+			msg.append("<p>I use it to compare backup drive with one containing original")
+					.append(" contents. Option of copying files from inside the app is")
+					.append(" planned.</p>");
+			msg.append("<h3>License</h3>");
+			msg.append("<p>Licensed under the Apache License, Version 2.0.")
+					.append(" This is a open source application that uses several closed")
+					.append(" source components. Licensing details are available in the")
+					.append(" source code, which should be reachable via the author's")
+					.append(" web page.</p>");
+			msg.append("</body></html>");
+			launchInfoDialog("DirrDiff", msg.toString());
+		} else if (src.equals(optionWebPage)) {
+			if (!isBrowsingSupported())
+				return;
+			
 		} else if (src.equals(optionExit)) {
 			this.dispose();
 		}
