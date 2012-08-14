@@ -141,9 +141,9 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 	
 	private void createMenu() {
 		menuApplication.add(optionAbout);
-		menuApplication.add(optionExit);
 		if (isBrowsingSupported())
 			menuApplication.add(optionWebPage);
+		menuApplication.add(optionExit);
 		menuBar.add(menuApplication);
 		
 		setJMenuBar(menuBar);
@@ -294,9 +294,7 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 			msg.append("</body></html>");
 			launchInfoDialog("DirrDiff", msg.toString());
 		} else if (src.equals(optionWebPage)) {
-			if (!isBrowsingSupported())
-				return;
-			
+			browseTo("http://mbdev.pl/");
 		} else if (src.equals(optionExit)) {
 			this.dispose();
 		}
