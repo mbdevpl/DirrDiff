@@ -7,6 +7,7 @@ import java.util.ArrayList;
 
 import javax.swing.JProgressBar;
 
+import pl.mbdev.gui.ExtendedFrame;
 import pl.mbdev.util.File;
 import pl.mbdev.util.MonitoredThread;
 
@@ -42,6 +43,8 @@ public final class DirScanThread extends MonitoredThread {
 	
 	private final JProgressBar diffProgress;
 	
+	private final ExtendedFrame launcher;
+	
 	/**
 	 * Number of scanned files.
 	 */
@@ -55,7 +58,7 @@ public final class DirScanThread extends MonitoredThread {
 	private ArrayList<File> files;
 	
 	public DirScanThread(String path) {
-		this(path, null);
+		this(path, null, null);
 	}
 	
 	/**
@@ -65,10 +68,11 @@ public final class DirScanThread extends MonitoredThread {
 	 *           absolute path
 	 * @param diffProgress
 	 */
-	public DirScanThread(String path, JProgressBar diffProgress) {
-		super("Scanning " + path);
+	public DirScanThread(String path, JProgressBar diffProgress, ExtendedFrame launcher) {
+		super("DirScanThread[" + path + "]");
 		this.path = path;
 		this.diffProgress = diffProgress;
+		this.launcher = launcher;
 		files = new ArrayList<File>();
 	}
 	
@@ -97,8 +101,12 @@ public final class DirScanThread extends MonitoredThread {
 						+ fileCount + " files.");
 			}
 		} catch (Exception ex) {
-			System.err.println("Exception in thread '" + path + "': " + ex);
-			ex.printStackTrace(System.err);
+			if (launcher == null) {
+				System.err.println("Exception in thread '" + path + "': " + ex);
+				ex.printStackTrace(System.err);
+			} else
+				launcher.launchExceptionDialog("Java exception",
+						"Error while scanning directory tree. The scan was aborted.", ex);
 		}
 	}
 	

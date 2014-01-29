@@ -7,6 +7,7 @@ import java.awt.event.ActionEvent;
 import java.util.ArrayList;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -17,6 +18,7 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 
 import pl.mbdev.gui.Borders;
+import pl.mbdev.gui.GridBagConstraintsExtended;
 import pl.mbdev.gui.GridBagFrame;
 import pl.mbdev.gui.GridBagPanel;
 import pl.mbdev.util.File;
@@ -54,6 +56,12 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 	 */
 	private static final long serialVersionUID = 1944142176468654719L;
 	
+	private static final String[] StagesDescriptions = { "Idle.",
+			"Scanning directories...", "Diff existing files...",
+			"Diff files' modification date and size...",
+			"Diff files' modification date and contents...", "Diff files' size...",
+			"Diff files' contents...", "Diff files' modification date...", "Unknown stage!" };
+	
 	/**
 	 * Main menu bar.
 	 */
@@ -65,14 +73,11 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 	private JMenuItem optionWebPage = new JMenuItem("Author's web page");
 	private JMenuItem optionExit = new JMenuItem("Exit");
 	
-	// params
+	/**
+	 * Panel containing parameters of directory scan.
+	 */
 	private GridBagPanel panelParams = new GridBagPanel(
 			Borders.Titled("Dir diff parameters"));
-	private JProgressBar barScan1 = new JProgressBar(SwingConstants.HORIZONTAL, 0, 100);
-	private JProgressBar barScan2 = new JProgressBar(SwingConstants.HORIZONTAL, 0, 100);
-	private JProgressBar barDiffStageNo = new JProgressBar(SwingConstants.HORIZONTAL, 0, 7);
-	private JProgressBar barDiffStageProgress = new JProgressBar(
-			SwingConstants.HORIZONTAL, 0, 1);
 	
 	/**
 	 * Panel depicting differences in file existence between two scanned directories.
@@ -99,12 +104,20 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 	// params panel
 	private JTextField dirOne = new JTextField();
 	private JTextField dirTwo = new JTextField();
+	private JCheckBox boxParallelScan = new JCheckBox("parallel scan", true);
+	private JCheckBox boxReadContents = new JCheckBox("read file contents", false);
 	private JButton bDiff = new JButton("Diff");
+	private JProgressBar barScan1 = new JProgressBar(SwingConstants.HORIZONTAL, 0, 100);
+	private JProgressBar barScan2 = new JProgressBar(SwingConstants.HORIZONTAL, 0, 100);
+	private JProgressBar barDiffStageNo = new JProgressBar(SwingConstants.HORIZONTAL, 0, 7);
+	private JProgressBar barDiffStageProgress = new JProgressBar(
+			SwingConstants.HORIZONTAL, 0, 1);
 	
 	/**
 	 * Used to handle two path searching threads.
 	 */
 	private Object semaphore = new Object();
+	private int threadsLeft = 0;
 	
 	/**
 	 * Thread searching the first path.
@@ -119,7 +132,9 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 	/**
 	 * True if the data was already read from both threads.
 	 */
-	private boolean dataFetched = false;
+	//private boolean dataFetched = false;
+	
+	//private int stagesCount = 7;
 	
 	// contain all scanned data
 	private ArrayList<File> filesOneAll;
@@ -131,7 +146,7 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 	 * Constructs the main frame of DirrDiff.
 	 */
 	public MainFrame() {
-		super("Dirr Diff", new Point(100, 100), new Dimension(800, 600));
+		super("Dirr Diff", new Point(100, 100), new Dimension(600, 400));
 		
 		createMenu();
 		create();
@@ -219,54 +234,49 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 	}
 	
 	private void createParams() {
-		GridBagConstraints gb = panelParams.gb;
+		GridBagConstraintsExtended gb = panelParams.gb;
 		
-		gb.fill = GridBagConstraints.NONE;
-		gb.gridwidth = 1;
+		// directory number one
+		gb.setGrid(0, 0, 2, 1).setFillNone().setWeightX(0);
 		panelParams.add(new JLabel("Dir One: "));
 		
-		gb.fill = GridBagConstraints.HORIZONTAL;
-		gb.gridwidth = GridBagConstraints.REMAINDER;
+		gb.setGrid(2, 0, 6, 1).setFillHorizontal().setWeightX(1);
 		panelParams.add(dirOne);
 		
-		gb.fill = GridBagConstraints.NONE;
-		gb.gridwidth = 1;
-		gb.weightx = 0;
+		// directory number two
+		gb.setGrid(0, 1, 2, 1).setFillNone().setWeightX(0);
 		panelParams.add(new JLabel("Dir Two: "));
 		
-		gb.fill = GridBagConstraints.HORIZONTAL;
-		gb.gridwidth = GridBagConstraints.REMAINDER;
-		gb.weightx = 1;
+		gb.setGrid(2, 1, 6, 1).setFillHorizontal().setWeightX(1);
 		panelParams.add(dirTwo);
 		
-		gb.gridx = 1;
-		gb.fill = GridBagConstraints.NONE;
-		gb.anchor = GridBagConstraints.EAST;
+		// check boxes
+		gb.setGrid(1, 2, 6, 1).setFillNone().setAnchorWest().setWeightX(0);
+		panelParams.add(boxParallelScan);
+		
+		gb.setGrid(1, 3, 6, 1).setFillNone().setAnchorWest().setWeightX(0);
+		panelParams.add(boxReadContents);
+		
+		// differentiation button
+		gb.setGrid(6, 2, 2, 2).setFillNone().setAnchorEast().setWeightX(0);
 		panelParams.add(bDiff);
 		
-		gb.gridx = GridBagConstraints.RELATIVE;
-		gb.fill = GridBagConstraints.HORIZONTAL;
-		gb.gridwidth = 2;
-		gb.weightx = 1;
-		gb.anchor = GridBagConstraints.WEST;
-		// gb.ipadx = 5;
+		// scan progress bars
+		gb.setGrid(0, 4, 4, 1).setFillHorizontal().setAnchorCenter().setWeightX(1);
 		barScan1.setString("Ready.");
 		barScan1.setStringPainted(true);
 		panelParams.add(barScan1);
 		
-		gb.gridwidth = GridBagConstraints.REMAINDER;
-		// gb.gridwidth = 2;
-		gb.anchor = GridBagConstraints.EAST;
+		gb.setGrid(4, 4, 4, 1).setFillHorizontal().setAnchorCenter().setWeightX(1);
 		barScan2.setString("Ready.");
 		barScan2.setStringPainted(true);
 		panelParams.add(barScan2);
 		
-		gb.gridwidth = GridBagConstraints.REMAINDER;
-		gb.anchor = GridBagConstraints.WEST;
+		gb.setGrid(0, 5, 8, 1).setFillHorizontal().setAnchorCenter().setWeightX(1);
 		barDiffStageProgress.setStringPainted(false);
 		panelParams.add(barDiffStageProgress);
 		
-		gb.gridwidth = 4;
+		gb.setGrid(0, 6, 8, 1).setFillHorizontal().setAnchorCenter().setWeightX(1);
 		barDiffStageNo.setStringPainted(true);
 		panelParams.add(barDiffStageNo);
 		
@@ -288,35 +298,9 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 		if (stageNo <= 0)
 			barDiffStageNo.setValue(0);
 		barDiffStageNo.setValue(stageNo - 1);
-		String desc = "";
-		switch (stageNo) {
-		case 0:
-			desc = "Idle.";
-			break;
-		case 1:
-			desc = "Scanning directories...";
-			break;
-		case 2:
-			desc = "Diff existing files...";
-			break;
-		case 3:
-			desc = "Diff files' modification date and size...";
-			break;
-		case 4:
-			desc = "Diff files' modification date and contents...";
-			break;
-		case 5:
-			desc = "Diff files' size...";
-			break;
-		case 6:
-			desc = "Diff files' contents...";
-			break;
-		case 7:
-			desc = "Diff files' modification date...";
-			break;
-		default:
-			desc = "Unknown stage!";
-		}
+		if (stageNo >= StagesDescriptions.length)
+			stageNo = StagesDescriptions.length - 1;
+		String desc = StagesDescriptions[stageNo];
 		barDiffStageNo.setString(stageNo + " / 7 - " + desc);
 	}
 	
@@ -384,13 +368,24 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 		}
 	}
 	
+	private void setParamsEnabled(boolean enabled) {
+		dirOne.setEnabled(enabled);
+		dirTwo.setEnabled(enabled);
+		boxParallelScan.setEnabled(enabled);
+		boxReadContents.setEnabled(enabled);
+		bDiff.setEnabled(enabled);
+	}
+	
+	/**
+	 * Starts Dir. R. Diff.
+	 */
 	private void launchDiff() {
 		String d1 = dirOne.getText();
-		String d2 = dirTwo.getText();
 		if (!d1.endsWith(File.separator)) {
 			d1 = d1.concat(File.separator);
 			dirOne.setText(d1);
 		}
+		String d2 = dirTwo.getText();
 		if (!d2.endsWith(File.separator)) {
 			d2 = d2.concat(File.separator);
 			dirTwo.setText(d2);
@@ -403,55 +398,138 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 		if (t2 != null && !t2.isStopped())
 			return;
 		
-		bDiff.setEnabled(false);
-		dataFetched = false;
+		setParamsEnabled(false);
+		//dataFetched = false;
+		t1 = null;
+		t2 = null;
 		initializeNextStage(2);
 		try {
-			t1 = new DirScanThread(d1, barScan1);
+			t1 = new DirScanThread(d1, barScan1, this);
 			t1.addMonitor(this);
+			if (boxParallelScan.isSelected()) {
+				t2 = new DirScanThread(d2, barScan2, this);
+				t2.addMonitor(this);
+				threadsLeft = 2;
+			} else
+				threadsLeft = 1;
 			t1.start();
-			t2 = new DirScanThread(d2, barScan2);
-			t2.addMonitor(this);
-			t2.start();
+			if (t2 != null)
+				t2.start();
 		} catch (Exception ex) {
-			bDiff.setEnabled(true);
-			System.err.println("Exception when starting scan: " + ex);
-			ex.printStackTrace(System.err);
+			setParamsEnabled(true);
+			// System.err.println("Exception when starting scan: " + ex);
+			// ex.printStackTrace(System.err);
+			launchExceptionDialog("DirrDiff: Java exception", "Error while starting scan.",
+					ex, 400);
 		}
 	}
 	
+	/**
+	 * Fetches raw data after the scan was finished.
+	 */
 	private void fetchData() {
-		int lenOne = dirOne.getText().length() - 1; // '-1' is for trailing slash
-		int lenTwo = dirTwo.getText().length() - 1; // also trailing slash
-		filesOneAll = t1.getFiles();
-		filesTwoAll = t2.getFiles();
+		if (boxParallelScan.isSelected()) {
+			// reinitializes array lists
+			// final Object lock1 = new Object(), lock2 = new Object();
+			// final MainFrame mf = this;
+			threadsLeft = 2;
+			
+			MonitoredThread mt1 = new MonitoredThread("fetchData:Dir1") {
+				@Override
+				public void doActions() {
+					int lenOne = dirOne.getText().length() - 1; // '-1' is for trailing slash
+					filesOneAll = t1.getFiles();
+					pathsOneAll = new ArrayList<String>();
+					for (int i = 0; i < filesOneAll.size(); i++) {
+						File f = filesOneAll.get(i);
+						String s = f.getAbsolutePath();
+						if (f.isDirectory() && !s.endsWith(File.separator))
+							s = s.concat(File.separator);
+						if (s.isEmpty())
+							continue;
+						if (s.length() - lenOne < 0)
+							continue;
+						pathsOneAll.add(s.substring(lenOne, s.length()));
+					}
+				}
+			};
+			mt1.addMonitor(this);
+			mt1.start();
+			
+			MonitoredThread mt2 = new MonitoredThread("fetchData:Dir2") {
+				@Override
+				public void doActions() {
+					int lenTwo = dirTwo.getText().length() - 1; // also trailing slash
+					filesTwoAll = t2.getFiles();
+					pathsTwoAll = new ArrayList<String>();
+					for (int i = 0; i < filesTwoAll.size(); i++) {
+						File f = filesTwoAll.get(i);
+						String s = f.getAbsolutePath();
+						if (f.isDirectory() && !s.endsWith(File.separator))
+							s = s.concat(File.separator);
+						if (s.isEmpty())
+							continue;
+						if (s.length() - lenTwo < 0)
+							continue;
+						pathsTwoAll.add(s.substring(lenTwo, s.length()));
+					}
+				}
+			};
+			mt2.addMonitor(this);
+			mt2.start();
+		} else {
+			threadsLeft = 1;
+			
+			MonitoredThread mt1 = new MonitoredThread("fetchData:Dir1") {
+				@Override
+				public void doActions() {
+					int lenOne = dirOne.getText().length() - 1; // '-1' is for trailing slash
+					filesOneAll = t1.getFiles();
+					pathsOneAll = new ArrayList<String>();
+					for (int i = 0; i < filesOneAll.size(); i++) {
+						File f = filesOneAll.get(i);
+						String s = f.getAbsolutePath();
+						if (f.isDirectory() && !s.endsWith(File.separator))
+							s = s.concat(File.separator);
+						if (s.isEmpty())
+							continue;
+						if (s.length() - lenOne < 0)
+							continue;
+						pathsOneAll.add(s.substring(lenOne, s.length()));
+					}
+					
+					int lenTwo = dirTwo.getText().length() - 1; // also trailing slash
+					filesTwoAll = t2.getFiles();
+					pathsTwoAll = new ArrayList<String>();
+					for (int i = 0; i < filesTwoAll.size(); i++) {
+						File f = filesTwoAll.get(i);
+						String s = f.getAbsolutePath();
+						if (f.isDirectory() && !s.endsWith(File.separator))
+							s = s.concat(File.separator);
+						if (s.isEmpty())
+							continue;
+						if (s.length() - lenTwo < 0)
+							continue;
+						pathsTwoAll.add(s.substring(lenTwo, s.length()));
+					}
+				}
+			};
+			mt1.addMonitor(this);
+			mt1.start();
+		}
 		
-		// comparing file existence
-		// creating string arrays
-		pathsOneAll = new ArrayList<String>();
-		pathsTwoAll = new ArrayList<String>();
-		for (int i = 0; i < filesOneAll.size(); i++) {
-			File f = filesOneAll.get(i);
-			String s = f.getAbsolutePath();
-			if (f.isDirectory() && !s.endsWith(File.separator))
-				s = s.concat(File.separator);
-			if (s.isEmpty())
-				continue;
-			if (s.length() - lenOne < 0)
-				continue;
-			pathsOneAll.add(s.substring(lenOne, s.length()));
-		}
-		for (int i = 0; i < filesTwoAll.size(); i++) {
-			File f = filesTwoAll.get(i);
-			String s = f.getAbsolutePath();
-			if (f.isDirectory() && !s.endsWith(File.separator))
-				s = s.concat(File.separator);
-			if (s.isEmpty())
-				continue;
-			if (s.length() - lenTwo < 0)
-				continue;
-			pathsTwoAll.add(s.substring(lenTwo, s.length()));
-		}
+		// boolean ok = false;
+		// synchronized (lock1) {
+		// synchronized (lock2) {
+		// if (mt1.isStopped() && mt2.isStopped())
+		// ok = true;
+		// }
+		// }
+		// if (!ok) {
+		// while (!mt1.isStopped() && !mt2.isStopped())
+		// ;
+		// }
+		
 	}
 	
 	private ArrayList<File> copyFileArray(ArrayList<? extends File> arg) {
@@ -556,7 +634,7 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 	}
 	
 	/**
-	 * Looks for files that were modified later and are different.
+	 * Looks for files that were modified later and have different contents.
 	 */
 	private void refreshPanelFilesModifiedHash() {
 		ArrayList<File> files1 = new ArrayList<File>();
@@ -570,7 +648,7 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 		initializeNextStage(size);
 		int scanned = 0;
 		for (int i = size - 1; i >= 0; i--) {
-			if (scanned % 50 == 0)
+			if (scanned % 5 == 0)
 				setStageProgress(scanned);
 			scanned++;
 			String path = paths12.get(i);
@@ -580,15 +658,17 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 			int index2 = pathsTwoAll.indexOf(path);
 			File f1 = filesOneAll.get(index1);
 			File f2 = filesTwoAll.get(index2);
-			if (!File.CompareContents(f1, f2))
-				continue;
+			if (boxReadContents.isSelected()) {
+				if (!File.CompareContents(f1, f2))
+					continue;
+			}
 			int dif = File.CompareModified(f1, f2);
 			if (dif > 0) {
-				files1.add(0, f1);
-				paths1.add(0, path);
+				files1.add(f1);
+				paths1.add(path);
 			} else if (dif < 0) {
-				files2.add(0, f2);
-				paths2.add(0, path);
+				files2.add(f2);
+				paths2.add(path);
 			} else
 				continue;
 			files12.remove(i);
@@ -631,11 +711,11 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 			if (s == 0)
 				continue;
 			if (s > 0) {
-				files1Size.add(0, f1);
-				paths1Size.add(0, path);
+				files1Size.add(f1);
+				paths1Size.add(path);
 			} else {
-				files2Size.add(0, f2);
-				paths2Size.add(0, path);
+				files2Size.add(f2);
+				paths2Size.add(path);
 			}
 			files12Size.remove(i);
 			paths12Size.remove(i);
@@ -647,6 +727,9 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 		panelFilesSize.setFilesTwo(files2Size, paths2Size);
 	}
 	
+	/**
+	 * Looks for files that differ in contents.
+	 */
 	private void refreshPanelFilesHash() {
 		ArrayList<File> files1 = new ArrayList<File>();
 		ArrayList<String> paths1 = new ArrayList<String>();
@@ -659,9 +742,11 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 		initializeNextStage(size);
 		int scanned = 0;
 		for (int i = size - 1; i >= 0; i--) {
-			if (scanned % 50 == 0)
+			if (scanned % 5 == 0)
 				setStageProgress(scanned);
 			scanned++;
+			if (boxReadContents.isSelected())
+				continue;
 			String path = paths12.get(i);
 			if (path.endsWith(File.separator))
 				continue;
@@ -672,11 +757,11 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 			if (!File.CompareContents(f1, f2))
 				continue;
 			// if (dif > 0) {
-			files1.add(0, f1);
-			paths1.add(0, path);
+			files1.add(f1);
+			paths1.add(path);
 			// } else if (dif < 0) {
-			files2.add(0, f2);
-			paths2.add(0, path);
+			files2.add(f2);
+			paths2.add(path);
 			// } else
 			// continue;
 			files12.remove(i);
@@ -689,6 +774,9 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 		panelFilesHash.setFilesTwo(files2, paths2);
 	}
 	
+	/**
+	 * Looks for files that differ in modification date.
+	 */
 	private void refreshPanelFilesModified() {
 		ArrayList<File> files1 = new ArrayList<File>();
 		ArrayList<String> paths1 = new ArrayList<String>();
@@ -713,11 +801,11 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 			File f2 = filesTwoAll.get(index2);
 			int dif = pl.mbdev.util.File.CompareModified(f1, f2);
 			if (dif > 0) {
-				files1.add(0, f1);
-				paths1.add(0, path);
+				files1.add(f1);
+				paths1.add(path);
 			} else if (dif < 0) {
-				files2.add(0, f2);
-				paths2.add(0, path);
+				files2.add(f2);
+				paths2.add(path);
 			} else
 				continue;
 			files12.remove(i);
@@ -731,27 +819,67 @@ public final class MainFrame extends GridBagFrame implements ThreadMonitor {
 	}
 	
 	@Override
-	public void threadStateChanged(String newState) {
+	public void threadStateChanged(MonitoredThread thread, String newState) {
 		synchronized (semaphore) {
-			if (!newState.equals(MonitoredThread.STOPPED))
+			
+			if (thread.getName().startsWith("DirScanThread")) {
+				if (!newState.equals(MonitoredThread.STOPPED))
+					return;
+				
+				if (t2 == null && !boxParallelScan.isSelected()) {
+					t2 = new DirScanThread(dirTwo.getText(), barScan2, this);
+					t2.addMonitor(this);
+					t2.start();
+					return;
+				}
+				setStageProgress(1);
+				
+				threadsLeft--;
+				if (threadsLeft > 0)
+					return;
+				try {
+					fetchData();
+				} catch (Exception ex) {
+					setParamsEnabled(true);
+					// System.err.println("Exception when scan ended: " + ex);
+					// ex.printStackTrace(System.err);
+					launchExceptionDialog("DirrDiff: Java exception",
+							"Error after finishing scan.", ex, 400);
+					return;
+				}
 				return;
-			setStageProgress(1);
-			if (!t1.isStopped() || !t2.isStopped())
+			}
+			
+			if (thread.getName().startsWith("dataFetch")) {
+				if (!newState.equals(MonitoredThread.STOPPED))
+					return;
+				threadsLeft--;
+				if (threadsLeft > 0)
+					return;
+				try {
+					finalizeStage();
+					refreshPanelFilesExist();
+					refreshPanelFilesModifiedSize();
+					refreshPanelFilesModifiedHash();
+					refreshPanelFilesSize();
+					refreshPanelFilesHash();
+					refreshPanelFilesModified();
+					barDiffStageNo.setString("Diff finished.");
+				} catch (Exception ex) {
+					// System.err.println("Exception when performing data analysis: " + ex);
+					// ex.printStackTrace(System.err);
+					launchExceptionDialog("DirrDiff: Java exception",
+							"Error while performing data analysis.", ex, 400);
+				}
+				setParamsEnabled(true);
 				return;
-			if (dataFetched)
-				return;
-			fetchData();
-			dataFetched = true;
+			}
+			// if (!t1.isStopped() || !t2.isStopped())
+			// return;
+			// if (dataFetched)
+			// return;
+			// dataFetched = true;
+			// return;
 		}
-		finalizeStage();
-		refreshPanelFilesExist();
-		refreshPanelFilesModifiedSize();
-		refreshPanelFilesModifiedHash();
-		refreshPanelFilesSize();
-		refreshPanelFilesHash();
-		refreshPanelFilesModified();
-		barDiffStageNo.setString("Diff finished.");
-		bDiff.setEnabled(true);
 	}
-	
 }

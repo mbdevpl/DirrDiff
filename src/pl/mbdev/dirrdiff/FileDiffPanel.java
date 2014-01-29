@@ -1,7 +1,6 @@
 package pl.mbdev.dirrdiff;
 
 import java.awt.Dimension;
-import java.awt.GridBagConstraints;
 import java.util.ArrayList;
 
 import javax.swing.DefaultListModel;
@@ -90,10 +89,13 @@ public final class FileDiffPanel extends GridBagPanel {
 		super(border);
 		
 		create();
+
+		int preferredWidth = 150;
+		int preferredHeight = 300;
 		
-		scrollerOne.setPreferredSize(new Dimension(200, 300));
-		scrollerBoth.setPreferredSize(new Dimension(200, 300));
-		scrollerTwo.setPreferredSize(new Dimension(200, 300));
+		scrollerOne.setPreferredSize(new Dimension(preferredWidth, preferredHeight));
+		scrollerBoth.setPreferredSize(new Dimension(preferredWidth, preferredHeight));
+		scrollerTwo.setPreferredSize(new Dimension(preferredWidth, preferredHeight));
 		
 		b1.setEnabled(false);
 		b12.setEnabled(false);
@@ -108,40 +110,33 @@ public final class FileDiffPanel extends GridBagPanel {
 	}
 	
 	private void create() {
-		gb.fill = GridBagConstraints.NONE;
-		gb.anchor = GridBagConstraints.CENTER;
-		gb.gridwidth = 1;
-		gb.weightx = 1;
-		gb.weighty = 0;
+		gb.setGrid(0, 0, 3, 1).setFillNone().setAnchorCenter().setWeight(0, 0);
 		add(l1);
-		
+
+		gb.setGrid(3, 0, 3, 1).setFillNone().setAnchorCenter().setWeight(0, 0);
 		add(l12);
-		
-		gb.gridwidth = GridBagConstraints.REMAINDER;
+
+		gb.setGrid(6, 0, 3, 1).setFillNone().setAnchorCenter().setWeight(0, 0);
 		add(l2);
 		
 		// lists
-		gb.fill = GridBagConstraints.BOTH;
-		gb.gridwidth = 1;
-		gb.weighty = 1;
+		gb.setGrid(0, 1, 3, 1).setFillBoth().setAnchorCenter().setWeight(1, 1);
 		add(scrollerOne);
-		
+
+		gb.setGrid(3, 1, 3, 1).setFillBoth().setAnchorCenter().setWeight(1, 1);
 		add(scrollerBoth);
-		
-		gb.gridwidth = GridBagConstraints.REMAINDER;
+
+		gb.setGrid(6, 1, 3, 1).setFillBoth().setAnchorCenter().setWeight(1, 1);
 		add(scrollerTwo);
 		
 		// buttons
-		gb.fill = GridBagConstraints.NONE;
-		gb.anchor = GridBagConstraints.WEST;
-		gb.gridwidth = 1;
-		gb.weighty = 0;
+		gb.setGrid(0, 2, 2, 1).setFillNone().setAnchorWest().setWeight(0, 0);
 		add(b1);
-		
-		gb.anchor = GridBagConstraints.CENTER;
+
+		gb.setGrid(3, 2, 3, 1).setFillNone().setAnchorCenter().setWeight(0, 0);
 		add(b12);
-		
-		gb.anchor = GridBagConstraints.EAST;
+
+		gb.setGrid(7, 2, 2, 1).setFillNone().setAnchorEast().setWeight(0, 0);
 		add(b2);
 	}
 	
